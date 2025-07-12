@@ -3,50 +3,47 @@ name: Auto Update Submodule on PR
 # 1. 'dev' 브랜치를 대상으로 하는 PR이 생성되거나,
 #    해당 PR에 새로운 커밋이 추가될 때마다 이 워크플로우를 실행합니다.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize]
     branches:
       - dev
 
+permissions:
+  contents: write       # pull_request_target 컨텍스트에서 쓰기 권한
+
 jobs:
-  auto-update-submodule:
+  update-submodule:
     runs-on: ubuntu-latest
-    # 워크플로우가 PR 브랜치에 코드를 푸시할 수 있도록 권한을 부여합니다.
-    permissions:
-      contents: write
 
     steps:
-      # 2. PR을 보낸 브랜치(예: feature/some-feature)의 코드를 가져옵니다.
-      - name: 'Checkout PR Branch'
-        uses: actions/checkout@v4
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v3
         with:
-          # PR의 소스 브랜치를 명시적으로 지정합니다.
-          ref: ${{ github.head_ref }}
-          # 서브모듈도 함께 가져옵니다.
-          submodules: 'recursive'
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 3. 서브모듈을 최신 버전으로 업데이트하고, 변경이 있다면 커밋합니다.
-      - name: 'Update Submodule and Commit'
+      - name: Update submodule to latest dev
         run: |
-          # Git 커밋 작성자를 PR 요청자로 설정합니다.
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          git submodule update --remote sub
 
-          # ⭐️ 핵심: 모든 서브모듈이 자신의 원격 저장소 정보를 가져오도록 합니다. (fetch)
-          # 이 명령어가 없으면 서브모듈이 'dev' 브랜치를 찾지 못하는 에러가 발생합니다.
-          git submodule foreach 'git fetch origin +refs/heads/*:refs/remotes/origin/*'
-
-          # .gitmodules에 설정된 브랜치의 최신 커밋으로 서브모듈을 업데이트합니다.
-          git submodule update --remote
-
-          # 서브모듈에 변경사항이 없으면 여기서 작업을 성공적으로 마칩니다.
-          if [[ -z $(git status -s) ]]; then
-            echo "✅ Submodule is already up-to-date."
-            exit 0
+      - name: Commit and push submodule update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sub
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update submodule 'sub' to latest dev"
+            git push origin HEAD:update-submodule-dev
           fi
 
-          # 변경사항이 있다면 커밋하고 PR 브랜치에 푸시합니다.
-          echo "⚠️ Submodule outdated. Committing new version..."
-          git add . # 변경된 모든 서브모듈을 스테이징합니다.
-          git commit -m "chore(submodule): Sync submodules to latest"
-          git push
+      - name: Create or update Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: update-submodule-dev
+          base: dev
+          title: "chore: update submodule 'sub' to latest dev"
+          body: |
+            이 PR은 자동으로 최신 `dev` 브랜치로 업데이트된 서브모듈 포인터를 반영합니다.
+          labels: automated, submodule
