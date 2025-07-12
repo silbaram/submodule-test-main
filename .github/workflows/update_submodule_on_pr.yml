@@ -34,7 +34,7 @@ jobs:
 
           # ⭐️ 핵심: 모든 서브모듈이 자신의 원격 저장소 정보를 가져오도록 합니다. (fetch)
           # 이 명령어가 없으면 서브모듈이 'dev' 브랜치를 찾지 못하는 에러가 발생합니다.
-          git submodule foreach git fetch
+          git submodule foreach 'git fetch origin +refs/heads/*:refs/remotes/origin/*'
 
           # .gitmodules에 설정된 브랜치의 최신 커밋으로 서브모듈을 업데이트합니다.
           git submodule update --remote
