@@ -27,7 +27,7 @@ jobs:
         run: |
           cd sub
           git fetch origin dev
-          git checkout origin/dev
+          git checkout -B dev origin/dev
           cd ..
           git add sub
           if git diff --cached --quiet; then
