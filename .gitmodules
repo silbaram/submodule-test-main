@@ -1,0 +1,4 @@
+[submodule "sub"]
+	path = sub
+	url = https://github.com/silbaram/submodule-test-sub.git
+	branch = dev
