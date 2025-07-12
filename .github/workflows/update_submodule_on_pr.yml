@@ -3,7 +3,7 @@ name: Auto Update Submodule on PR
 on:
   # dev 브랜치를 대상으로 하는 PR이 생성되거나, 업데이트될 때 실행하도록 변경
   pull_request:
-    types: [opened, synchronize,]
+    types: [opened, synchronize]
     branches:
       - dev
 
@@ -24,12 +24,20 @@ jobs:
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          
+          # 모든 서브모듈에 대해 원격 저장소의 최신 정보를 가져옵니다. (fetch)
+          git submodule foreach git fetch
+          
           git submodule update --remote sub
+          
           if [[ -z $(git status -s) ]]; then
             echo "Submodule is already up-to-date."
             exit 0
           fi
+          
           echo "Submodule outdated. Committing new version..."
-          git add p
+          
+          git add sub
+          
           git commit -m "chore(submodule): Update submodule 'sub' to latest"
           git push
