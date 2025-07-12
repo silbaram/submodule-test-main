@@ -3,8 +3,7 @@ name: update_submodule_on_pr.yml
 # 1. dev 브랜치를 대상으로 하는 PR이 생성되거나, 업데이트(synchronize)될 때 실행
 on:
   pull_request:
-    types:
-      - synchronize
+    types: [submitted]
     branches:
       - dev
 
