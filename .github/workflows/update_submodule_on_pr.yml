@@ -1,43 +1,49 @@
 name: Auto Update Submodule on PR
 
+# 1. 'dev' 브랜치를 대상으로 하는 PR이 생성되거나,
+#    해당 PR에 새로운 커밋이 추가될 때마다 이 워크플로우를 실행합니다.
 on:
-  # dev 브랜치를 대상으로 하는 PR이 생성되거나, 업데이트될 때 실행하도록 변경
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize]
     branches:
       - dev
 
-jobs:
-  auto-update-submodule:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: 'Checkout PR Branch'
-        uses: actions/checkout@v4
-        with:
-          # pull_request 이벤트에서는 github.head_ref가 정상적으로 동작합니다.
-          ref: ${{ github.head_ref }}
-          submodules: 'recursive'
+permissions:
+  contents: write       # pull_request_target 컨텍스트에서 쓰기 권한
 
-      - name: 'Update Submodule and Commit'
+jobs:
+  update-submodule:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update submodule to latest dev
         run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-          
-          # 모든 서브모듈에 대해 원격 저장소의 최신 정보를 가져옵니다. (fetch)
-          git submodule foreach git fetch
-          
-          git submodule update --remote
-          
-          if [[ -z $(git status -s) ]]; then
-            echo "Submodule is already up-to-date."
-            exit 0
-          fi
-          
-          echo "Submodule outdated. Committing new version..."
-          
+          git submodule update --remote sub
+
+      - name: Commit and push submodule update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add sub
-          
-          git commit -m "chore(submodule): Update submodule 'sub' to latest"
-          git push
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update submodule 'sub' to latest dev"
+            git push origin HEAD:update-submodule-dev
+          fi
+
+      - name: Create or update Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: update-submodule-dev
+          base: dev
+          title: "chore: update submodule 'sub' to latest dev"
+          body: |
+            이 PR은 자동으로 최신 `dev` 브랜치로 업데이트된 서브모듈 포인터를 반영합니다.
+          labels: automated, submodule
