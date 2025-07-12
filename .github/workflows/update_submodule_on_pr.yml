@@ -16,21 +16,18 @@ jobs:
         with:
           submodules: true
           token: ${{ secrets.SUB_TOKEN }}
-#      - name: Set git config
-#        run: |
-#          git config user.name "${{ github.actor }}"
-#          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-#
-#      - name: Update submodule to latest dev
-#        run: |
-#          cd sub
-#          git fetch origin dev
-#          git checkout -B dev origin/dev
-#          cd ..
-#          git add sub
-#          if git diff --cached --quiet; then
-#            echo "Submodule already up-to-date."
-#            exit 0
-#          fi
-#          git commit -m "chore(submodule): Update submodule 'sub' to latest dev"
-#          git push
+      #      - name: Set git config
+      #        run: |
+      #          git config user.name "${{ github.actor }}"
+      #          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+      #
+      - name: Update submodule to latest dev
+        run: |
+          eval `ssh-agent -s`
+
+          echo "${{ secrets.SUB_TOKEN }}" | ssh-add -
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          git config user.name "${{ github.actor }}
+          git add --all
+          git commit -m "update: GitHub Actions - update translations" || echo "No changes to commit"
+          git push
