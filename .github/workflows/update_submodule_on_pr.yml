@@ -28,7 +28,7 @@ jobs:
           # 모든 서브모듈에 대해 원격 저장소의 최신 정보를 가져옵니다. (fetch)
           git submodule foreach git fetch
           
-          git submodule update --remote sub
+          git submodule update --remote
           
           if [[ -z $(git status -s) ]]; then
             echo "Submodule is already up-to-date."
