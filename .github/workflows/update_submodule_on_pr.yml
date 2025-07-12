@@ -1,49 +1,37 @@
 name: Auto Update Submodule on PR
 
-# 1. 'dev' 브랜치를 대상으로 하는 PR이 생성되거나,
-#    해당 PR에 새로운 커밋이 추가될 때마다 이 워크플로우를 실행합니다.
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize]
     branches:
       - dev
 
-permissions:
-  contents: write       # pull_request_target 컨텍스트에서 쓰기 권한
-
 jobs:
-  update-submodule:
+  auto-update-submodule:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
     steps:
-      - name: Checkout repository with submodules
+      - name: Checkout PR Branch
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-          submodules: recursive
-          token: ${{ secrets.GITHUB_TOKEN }}
+          submodules: true
+
+      - name: Set git config
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
       - name: Update submodule to latest dev
         run: |
-          git submodule update --remote sub
-
-      - name: Commit and push submodule update
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cd sub
+          git fetch origin dev
+          git checkout -B dev origin/dev
+          cd ..
           git add sub
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: update submodule 'sub' to latest dev"
-            git push origin HEAD:update-submodule-dev
+          if git diff --cached --quiet; then
+            echo "Submodule already up-to-date."
+            exit 0
           fi
-
-      - name: Create or update Pull Request
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: update-submodule-dev
-          base: dev
-          title: "chore: update submodule 'sub' to latest dev"
-          body: |
-            이 PR은 자동으로 최신 `dev` 브랜치로 업데이트된 서브모듈 포인터를 반영합니다.
-          labels: automated, submodule
+          git commit -m "chore(submodule): Update submodule 'sub' to latest dev"
+          git push
